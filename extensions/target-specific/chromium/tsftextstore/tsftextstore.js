@@ -101,19 +101,19 @@ Loader.OnLoad(function() {
 
     DbgObject.AddTypeDescription(DbgObjectType(Chromium.BrowserProcessSyntheticModuleName, "ui::TextInputClient"), "textInputType_", false, UserEditableFunctions.Create((textInputClient) => {
         return Promise.all([textInputClient.dcast(DbgObjectType(Chromium.BrowserProcessSyntheticModuleName, "RemoteTextInputClient")),
-            textInputClient.dcast(DbgObjectType("content", "content::RenderWidgetHostViewAura")),
-            textInputClient.dcast(DbgObjectType("views", "views::PrefixSelector")),
-            textInputClient.dcast(DbgObjectType("views", "views::Textfield"))])
+            textInputClient.dcast(DbgObjectType(Chromium.BrowserProcessSyntheticModuleName, "content::RenderWidgetHostViewAura")),
+            textInputClient.dcast(DbgObjectType(Chromium.BrowserProcessSyntheticModuleName, "views::PrefixSelector")),
+            textInputClient.dcast(DbgObjectType(Chromium.BrowserProcessSyntheticModuleName, "views::Textfield"))])
         .thenAll((remoteTextInputClient, renderWidgetHostViewAura, prefixSelector, textField) => {
             if (!remoteTextInputClient.isNull()) {
                 return remoteTextInputClient.f("text_input_type_");
             } else if (!renderWidgetHostViewAura.isNull()) {
-                return Promise.all([DbgObject.create(DbgObjectType("content", "content::RenderWidgetHostViewBase"), 0).size(), DbgObject.create(DbgObjectType("content", "content::RenderWidgetHostViewEventHandler::Delegate"), 0).size(), DbgObject.create(DbgObjectType("content", "content::TextInputManager::Observer"), 0).size(), DbgObject.create(DbgObjectType("content", "void*"), 0).size()])
+                return Promise.all([DbgObject.create(DbgObjectType(Chromium.BrowserProcessSyntheticModuleName, "content::RenderWidgetHostViewBase"), 0).size(), DbgObject.create(DbgObjectType(Chromium.BrowserProcessSyntheticModuleName, "content::RenderWidgetHostViewEventHandler::Delegate"), 0).size(), DbgObject.create(DbgObjectType(Chromium.BrowserProcessSyntheticModuleName, "content::TextInputManager::Observer"), 0).size(), DbgObject.create(DbgObjectType(Chromium.BrowserProcessSyntheticModuleName, "void*"), 0).size()])
                 .thenAll((base, delegate, observer, pointerSize) => {
                     var offset = base + delegate + observer;
                     return renderWidgetHostViewAura.as("void*").idx(-1 * offset / pointerSize)  // TODO: Fix this hack in favor of properly handling multiple inheritance.
                     .then((offsettedPtr) => {
-                        renderWidgetHostViewAura = offsettedPtr.as(DbgObjectType("content", "content::RenderWidgetHostViewAura"));
+                        renderWidgetHostViewAura = offsettedPtr.as(DbgObjectType(Chromium.BrowserProcessSyntheticModuleName, "content::RenderWidgetHostViewAura"));
                         return renderWidgetHostViewAura.f("text_input_manager_")
                         .then((textInputManager) => {
                             if (!textInputManager.isNull()) {
