@@ -82,7 +82,7 @@ var Chromium = null;
             _help_BrowserProcessEquivalentModules: {
                 description: "List of modules used in the Chromium browser process.",
             },
-            BrowserProcessEquivalentModules: ["msedge", "accessibility", "chrome"],
+            BrowserProcessEquivalentModules: ["msedge", "chrome", "accessibility", "ui_base_ime", "base"],
 
             _help_GpuProcessEquivalentModules: {
                 description: "List of modules used in the Chromium gpu process.",

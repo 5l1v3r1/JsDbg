@@ -8,7 +8,7 @@ Loader.OnLoad(function() {
         InterpretAddress: function(address) {
             var voidObj = DbgObject.create("ntdll!void", address);
             if (!voidObj.isNull()) {
-                return voidObj.dcast(DbgObjectType("ui_base_ime", "ui::TSFTextStore"))
+                return voidObj.dcast(DbgObjectType(Chromium.BrowserProcessSyntheticModuleName, "ui::TSFTextStore"))
                 .then((tsfTextStore) => {
                     if (!tsfTextStore.isNull()) {
                         return tsfTextStore;
@@ -20,10 +20,11 @@ Loader.OnLoad(function() {
             return DbgObject.NULL;
         },
         GetRoots: function() {
-            return Promise.all([DbgObject.global("ui_base_ime", "tsf_bridge_tls").F("Object").f("slot_").pointerValue(), DbgObject.teb(), DbgObject.global("base", "g_native_tls_key").val()])
+            return Promise.all([DbgObject.global(Chromium.BrowserProcessSyntheticModuleName, "tsf_bridge_tls").F("Object").f("slot_").pointerValue(), DbgObject.teb(), DbgObject.global(Chromium.BrowserProcessSyntheticModuleName, "g_native_tls_key").val()])
             .thenAll((bigIntForSlotNumber, teb, tlsKey) => {
                 return Promise.map(teb.array("TLS Slots"), (slotPtr) => slotPtr.deref())
                 .then((tlsSlotsArray) => {
+                    debugger;
                     var tlsVectorEntry = tlsSlotsArray[tlsKey];
                     if (!tlsVectorEntry.isNull()) {
                         var invalidSlotValue = -1;
@@ -32,7 +33,7 @@ Loader.OnLoad(function() {
                         if ((slotNumber < maxThreadLocalStorageSize) && (slotNumber != invalidSlotValue)) {
                             return tlsVectorEntry.as("void*").idx(slotNumber * 2).deref()  // ?
                             .then((tlsVectorEntryData) => {
-                                var tsfBridgeImpl = tlsVectorEntryData.as(DbgObjectType("ui_base_ime", "ui::`anonymous namespace'::TSFBridgeImpl"));
+                                var tsfBridgeImpl = tlsVectorEntryData.as(DbgObjectType(Chromium.BrowserProcessSyntheticModuleName, "ui::`anonymous namespace'::TSFBridgeImpl"));
                                 return Promise.all([tsfBridgeImpl.f("client_").desc("textInputType_"), tsfBridgeImpl.f("tsf_document_map_")])
                                 .thenAll((activeTextInputType, tsfDocumentMap) => {
                                     return Promise.filter(tsfDocumentMap.array("Pairs"), (pair) => {
@@ -41,7 +42,7 @@ Loader.OnLoad(function() {
                                     })
                                     .then((activePair) => {
                                         if (activePair.length == 0) {
-                                            return DbgObject.constantValue(DbgObjectType("ui_base_ime", "ui::TextInputType"), "TEXT_INPUT_TYPE_TEXT")
+                                            return DbgObject.constantValue(DbgObjectType(Chromium.BrowserProcessSyntheticModuleName, "ui::TextInputType"), "TEXT_INPUT_TYPE_TEXT")
                                             .then((textInputTypeText) => {
                                                 return Promise.filter(tsfDocumentMap.array("Pairs"), (pair) => {
                                                     return pair.f("first").val()
@@ -66,10 +67,10 @@ Loader.OnLoad(function() {
                 });
             });
         },
-        DefaultTypes: [DbgObjectType("ui_base_ime", "ui::TSFTextStore")]
+        DefaultTypes: [DbgObjectType(Chromium.BrowserProcessSyntheticModuleName, "ui::TSFTextStore")]
     };
 
-    TSFTextStore.Tree.addChildren(DbgObjectType("ui_base_ime", "ui::TSFTextStore"), (tsfTextStore) => {
+    TSFTextStore.Tree.addChildren(DbgObjectType(Chromium.BrowserProcessSyntheticModuleName, "ui::TSFTextStore"), (tsfTextStore) => {
         return Promise.all([
             {
                 toString : () => {
@@ -98,8 +99,8 @@ Loader.OnLoad(function() {
         ]);
     });
 
-    DbgObject.AddTypeDescription(DbgObjectType("ui_base_ime", "ui::TextInputClient"), "textInputType_", false, UserEditableFunctions.Create((textInputClient) => {
-        return Promise.all([textInputClient.dcast(DbgObjectType("chrome", "RemoteTextInputClient")),
+    DbgObject.AddTypeDescription(DbgObjectType(Chromium.BrowserProcessSyntheticModuleName, "ui::TextInputClient"), "textInputType_", false, UserEditableFunctions.Create((textInputClient) => {
+        return Promise.all([textInputClient.dcast(DbgObjectType(Chromium.BrowserProcessSyntheticModuleName, "RemoteTextInputClient")),
             textInputClient.dcast(DbgObjectType("content", "content::RenderWidgetHostViewAura")),
             textInputClient.dcast(DbgObjectType("views", "views::PrefixSelector")),
             textInputClient.dcast(DbgObjectType("views", "views::Textfield"))])
@@ -126,19 +127,19 @@ Loader.OnLoad(function() {
                                 .then((activeViewPair) => activeViewPair[0].f("second"))
                                 .then((textInputState) => textInputState.f("type").val());
                             } else {
-                                return DbgObject.constantValue(DbgObjectType("ui_base_ime", "ui::TextInputType"), "TEXT_INPUT_TYPE_NONE");
+                                return DbgObject.constantValue(DbgObjectType(Chromium.BrowserProcessSyntheticModuleName, "ui::TextInputType"), "TEXT_INPUT_TYPE_NONE");
                             }
                         });
                     });
                 })
             } else if (!prefixSelector.isNull()) {
-                return DbgObject.constantValue(DbgObjectType("ui_base_ime", "ui::TextInputType"), "TEXT_INPUT_TYPE_TEXT");
+                return DbgObject.constantValue(DbgObjectType(Chromium.BrowserProcessSyntheticModuleName, "ui::TextInputType"), "TEXT_INPUT_TYPE_TEXT");
             } else {
                 console.assert(!textField.isNull());
                 return Promise.all([textField.f("read_only_").val(), textField.f("enabled_").val()])
                 .thenAll((readOnly, enabled) => {
                     if (readOnly || !enabled) {
-                        return DbgObject.constantValue(DbgObjectType("ui_base_ime", "ui::TextInputType"), "TEXT_INPUT_TYPE_NONE");
+                        return DbgObject.constantValue(DbgObjectType(Chromium.BrowserProcessSyntheticModuleName, "ui::TextInputType"), "TEXT_INPUT_TYPE_NONE");
                     } else {
                         return textField.f("text_input_type_");
                     }
@@ -146,12 +147,4 @@ Loader.OnLoad(function() {
             }
         })
     }));
-
-    // TreeExtensionTemplate.Renderer.addNameRenderer(DbgObjectType("ntdll!void"), (voidObj) => {
-    //     return "Type name to render";
-    // });
-
-    // DbgObject.AddAction(DbgObjectType("ntdll!void"), "TreeExtensionTemplate", (voidObj) => {
-    //     return TreeInspector.GetActions("treeExtensionTemplate", "TreeExtensionTemplate", voidObj);
-    // });
 });
