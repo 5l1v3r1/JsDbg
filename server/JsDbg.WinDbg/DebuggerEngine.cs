@@ -53,12 +53,6 @@ namespace JsDbg.WinDbg {
             }
         }
 
-        public Task<ulong> TebAddress() {
-            return this.AttemptOperation<ulong>(() => {
-                return this.runner.TebAddress();
-            }, String.Format("Unable to get TEB address."));
-        }
-
         public async Task<ulong> TebAddress() {
             return await this.runner.TebAddress();
         }
