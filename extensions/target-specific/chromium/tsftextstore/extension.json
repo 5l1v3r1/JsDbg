@@ -9,7 +9,7 @@
         "target-specific/stl-helpers",
         "target-specific/chromium/chromium-helpers",
         "target-specific/chromium/gfx-type-helpers",
-        "teb"
+        "target-specific/ntdll/teb"
     ],
     "includes": [
         "tsftextstore.js"
@@ -18,8 +18,10 @@
         "dbgobject"
     ],
     "targetModules": [
+        "msedge",
         "chrome",
         "content_shell",
-        "browser_tests"
+        "browser_tests",
+        "content_browsertests"
     ]
 }
