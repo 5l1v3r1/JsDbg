@@ -1,3 +1,11 @@
+//--------------------------------------------------------------
+//
+//    MIT License
+//
+//    Copyright (c) Microsoft Corporation. All rights reserved.
+//
+//--------------------------------------------------------------
+
 "use strict";
 
 var AXTree = undefined;
@@ -12,7 +20,19 @@ Loader.OnLoad(function() {
 
     function getManagers() {
         if (managersPromise == null) {
-            managersPromise = DbgObject.global(Chromium.BrowserProcessSyntheticModuleName, "g_ax_tree_id_map").F("Object").array("Pairs").f("second");
+            // g_ax_tree_id_map was replaced by a specialized AXTreeManagerMap. Check for both in case an older
+            // build or crash dump is inspected.
+            managersPromise = Promise.any([
+                DbgObject.global(Chromium.BrowserProcessSyntheticModuleName, "instance", "base::NoDestructor<ui::AXTreeManagerMap>",
+                    "ui::AXTreeManagerMap::GetInstance()")
+                    .F("Object")
+                    .f("map_")
+                    .array("Pairs")
+                    .f("second"),
+                DbgObject.global(Chromium.BrowserProcessSyntheticModuleName, "g_ax_tree_id_map")
+                    .F("Object")
+                    .array("Pairs")
+                    .f("second")]);
         }
         return managersPromise;
     }
@@ -49,7 +69,8 @@ Loader.OnLoad(function() {
             }
         },
         GetRoots: function() {
-            return getManagers().f("tree_").F("Object").vcast()
+            return getManagers()
+            .then((managers) => Promise.map(managers, (manager) => manager.vcast().f("tree_").F("Object").vcast()))
             .then((trees) => ((trees.length == 0) ? Promise.reject("No accessibility trees found.") : trees))
             .then(null, (error) => {
                 var errorMessage = ErrorMessages.CreateErrorsList(error) +
@@ -65,10 +86,10 @@ Loader.OnLoad(function() {
     AXTree.Tree.addChildren(Chromium.BrowserProcessType("ui::AXTree"), (tree) => tree.f("root_"));
     AXTree.Tree.addChildren(Chromium.BrowserProcessType("ui::AXNode"), (node) => node.f("children_").array("Elements").deref());
 
-    AXTree.Renderer.addNameRenderer(Chromium.BrowserProcessType("ui::AXTree"), (tree) => 
-        Promise.all([tree.f("data_.url").desc(), tree.f("data_.tree_id").val()])
-        .thenAll((url, id) => `AXTree(#${id}) ${url}`)
-    );
+    AXTree.Renderer.addNameRenderer(Chromium.BrowserProcessType("ui::AXTree"), (tree) => {
+        return tree.f("data_.url").desc()
+        .then((url) => `AXTree (${url})`);
+    });
     AXTree.Renderer.addNameRenderer(Chromium.BrowserProcessType("ui::AXNode"), (node) =>
         Promise.all([
             node.f("data_.role").constant().then((str) => str.substr(1)),
@@ -84,9 +105,12 @@ Loader.OnLoad(function() {
         (node) => {
             return Promise.all([getManagers(), node.list("parent_")])
             .thenAll((managers, ancestry) => {
-                return Promise.filter(managers, (manager) => manager.f("tree_").F("Object").vcast().f("root_").equals(ancestry[ancestry.length - 1]));
+                return Promise.filter(managers, (manager) => manager.vcast().f("tree_").F("Object").vcast().f("root_").equals(ancestry[ancestry.length - 1]));
             })
-            .then((managers) => managers[0]);
+            .then((managers) => {
+                console.assert(managers.length > 0);
+                return managers[0].vcast();
+            });
         }
     );
 

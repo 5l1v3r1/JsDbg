@@ -1,3 +1,11 @@
+/*--------------------------------------------------------------
+
+     MIT License
+
+     Copyright (c) Microsoft Corporation. All rights reserved.
+
+  --------------------------------------------------------------*/
+
 .field-selection {
     overflow-y:scroll !important;
     height:100%;
@@ -40,7 +48,7 @@
 
 .field-selection .type-name::before {
     content:"v";
-    font-family:Consolas;
+    font-family:Consolas, monospace;
     margin-right:5px;
 }
 

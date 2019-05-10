@@ -1,3 +1,11 @@
+//--------------------------------------------------------------
+//
+//    MIT License
+//
+//    Copyright (c) Microsoft Corporation. All rights reserved.
+//
+//--------------------------------------------------------------
+
 "use strict";
 
 // dbgobject-core.js
@@ -112,12 +120,14 @@ Loader.OnLoad(function() {
         returns: "A promise to a DbgObject representing the symbol.",
         arguments: [
             {name:"moduleName", type:"string", description:"The name of the module containing the symbol."},
-            {name:"symbol", type:"string", description:"The global symbol to lookup."}
+            {name:"symbol", type:"string", description:"The global symbol to lookup."},
+            {name: "typeName", type:"string", description: "(optional) The type name of the symbol to look up."},
+            {name: "scope", type:"string", description: "(optional) The scope of the symbol to look up (namespace, outer class, etc.). Required on some platforms."}
         ]
     }
-    DbgObject.global = function(moduleName, symbol) {
+    DbgObject.global = function(moduleName, symbol, typeName, scope) {
         return new PromisedDbgObject(
-            moduleBasedLookup(moduleName, JsDbgPromise.LookupGlobalSymbol, symbol)
+            moduleBasedLookup(moduleName, JsDbgPromise.LookupGlobalSymbol, symbol, typeName, scope)
             .then(function(result) {
                 return DbgObject.create(DbgObjectType(result.module, result.type), result.pointer);
             })
@@ -420,10 +430,10 @@ Loader.OnLoad(function() {
         return moduleBasedLookup(that.type.moduleOrSyntheticName(), JsDbgPromise.LookupFieldOffset, that.type.name(), field)
         .then(function(result) {
             return DbgObject.create(
-                getFieldType(that.type, field, DbgObjectType(result.module, result.type)), 
+                getFieldType(that.type, field, DbgObjectType(result.module, result.type)),
                 that.isNull() ? 0 : that._pointer.add(result.offset),
-                result.bitcount, 
-                result.bitoffset, 
+                result.bitcount,
+                result.bitoffset,
                 result.size
             );
         });
@@ -446,7 +456,7 @@ Loader.OnLoad(function() {
         return new PromisedDbgObject(
             moduleBasedLookup(outerType.moduleOrSyntheticName(), JsDbgPromise.LookupFieldOffset, outerType.name(), field)
             .then(function(result) {
-                return DbgObject.create(outerType, that.isNull() ? 0 : that._pointer.add(-result.offset)); 
+                return DbgObject.create(outerType, that.isNull() ? 0 : that._pointer.add(-result.offset));
             })
         );
     }
@@ -697,7 +707,7 @@ Loader.OnLoad(function() {
         description: "Indicates if the type of the DbgObject is one that may have fields.",
         returns: "A promise to a bool."
     };
-    
+
     DbgObject.prototype.isTypeWithFields = function() {
         var that = this;
         return Promise.resolve(null)
@@ -899,7 +909,7 @@ Loader.OnLoad(function() {
         return this.as("void*", true).ubigval()
 
         // Lookup the symbol at that value...
-        .then(function(result) { 
+        .then(function(result) {
             return DbgObject.symbol(result);
         })
         .then(function(vtableSymbol) {
@@ -1063,7 +1073,7 @@ Loader.OnLoad(function() {
 
                 var aSize = bitSize(a.size, a.bitcount);
                 var bSize = bitSize(b.size, b.bitcount);
-                
+
                 // They start at the same offset, so there's a union.  Put the biggest first.
                 if (aSize != bSize) {
                     return bSize - aSize;
@@ -1079,10 +1089,10 @@ Loader.OnLoad(function() {
                     offset: field.offset,
                     size: field.size,
                     value: DbgObject.create(
-                        getFieldType(that.type, field.name, DbgObjectType(field.module, field.type)), 
+                        getFieldType(that.type, field.name, DbgObjectType(field.module, field.type)),
                         that._pointer.isNull() ? 0 : that._pointer.add(field.offset),
-                        field.bitcount, 
-                        field.bitoffset, 
+                        field.bitcount,
+                        field.bitoffset,
                         field.size
                     )
                 };

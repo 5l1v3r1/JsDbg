@@ -1,11 +1,19 @@
-﻿using System;
+﻿//--------------------------------------------------------------
+//
+//    MIT License
+//
+//    Copyright (c) Microsoft Corporation. All rights reserved.
+//
+//--------------------------------------------------------------
+
+using System;
 using System.Threading.Tasks;
 using Microsoft.Debuggers.DbgEng;
 using Dia2Lib;
 using JsDbg.WinDbg;
 using System.IO;
 
-namespace JsDbg.Dia.WinDbg {
+namespace JsDbg.Windows.Dia.WinDbg {
     class DiaSessionModuleSource : IDiaSessionSource {
         private class ModuleReader : IDiaReadExeAtRVACallback, IDiaLoadCallback {
             internal ModuleReader(SymbolCache symbolCache, DebugDataSpaces dataSpaces, string module) {

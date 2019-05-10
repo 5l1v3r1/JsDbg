@@ -1,9 +1,23 @@
+//--------------------------------------------------------------
+//
+//    MIT License
+//
+//    Copyright (c) Microsoft Corporation. All rights reserved.
+//
+//--------------------------------------------------------------
 
 DbgObject.AddExtendedField(
     (type) => type.name().match(/^std::unique_ptr<.*>$/) != null,
     "Object",
     (type) => type.templateParameters()[0],
     (uniquePtr) => uniquePtr.f("_Mypair._Myval2")
+);
+
+DbgObject.AddExtendedField(
+    (type) => type.name().match(/^std::__Cr::unique_ptr<.*>$/) != null,
+    "Object",
+    (type) => type.templateParameters()[0],
+    (uniquePtr) => uniquePtr.f("__ptr_.__value_")
 );
 
 DbgObject.AddArrayField(
@@ -19,6 +33,28 @@ DbgObject.AddArrayField(
     }
 );
 
+DbgObject.AddArrayField(
+    (type) => {
+        return type.name().match(/^std::__Cr::vector<(.*)>$/) != null;
+    },
+    "Elements",
+    (type) => {
+        return type.templateParameters()[0];
+    },
+    (vector) => {
+        return vector.f("__begin_").array(vector.desc("Size"));
+    }
+);
+
+function computeVectorSize(firstElement, lastElement, elementSize) {
+    if (!firstElement.isNull()) {
+        console.assert(!lastElement.isNull());
+        return lastElement.pointerValue().minus(firstElement.pointerValue()).divide(elementSize);
+    } else {
+        return 0;
+    }
+}
+
 DbgObject.AddTypeDescription(
     (type) => {
         return type.name().match(/^std::vector<(.*)>$/) != null;
@@ -28,14 +64,19 @@ DbgObject.AddTypeDescription(
     (vector) => {
         vector = vector.f("_Mypair._Myval2", "");
         return Promise.all([vector.f("_Myfirst"), vector.f("_Mylast"), vector.f("_Myfirst").size()])
-        .thenAll((firstElement, lastElement, elementSize) => {
-            if (!firstElement.isNull()) {
-                console.assert(!lastElement.isNull());
-                return lastElement.pointerValue().minus(firstElement.pointerValue()).divide(elementSize);
-            } else {
-                return 0;
-            }
-        });
+        .thenAll(computeVectorSize);
+    }
+);
+
+DbgObject.AddTypeDescription(
+    (type) => {
+        return type.name().match(/^std::__Cr::vector<(.*)>$/) != null;
+    },
+    "Size",
+    false,
+    (vector) => {
+        return Promise.all([vector.f("__begin_"), vector.f("__end_"), vector.f("__begin_").size()])
+        .thenAll(computeVectorSize);
     }
 );
 
@@ -77,6 +118,53 @@ DbgObject.AddArrayField(
     }
 );
 
+DbgObject.AddArrayField(
+    (type) => {
+        return type.name().match(/^std::__Cr::map<(.*)>$/) != null;
+    },
+    "Pairs",
+    (type) => {
+        var allocator = type.templateParameters()[3];
+        var pair = new DbgObjectType(allocator, type).templateParameters()[0];
+        return new DbgObjectType(pair, type);
+    },
+    (map) => map.f("__tree_").then((tree) => {
+        var fromType = map.type.templateParameters()[0];
+        var toType = map.type.templateParameters()[1];
+        var nodeTypeName = `std::__Cr::__tree_node<std::__Cr::__value_type<${fromType}, ${toType}>, void*>`;
+        var nodeType = new DbgObjectType(nodeTypeName, tree.type);
+        return tree.f("__pair3_.__value_").val().then((size) => {
+            return Promise.map(tree.f("__begin_node_").as(nodeType).list(nextRbTreeNode, null, size), (node) => {
+                return node.f("__value_.__cc");
+            });
+        });
+    })
+);
+
+function walkDownLeft(node) {
+    return node.f("__left_").as(node.type).then((left) => {
+        if (left.isNull() || left.equals(node))
+            return node;
+        return walkDownLeft(left.as(node.type));
+    });
+}
+
+function walkUpParent(node) {
+    return Promise.all([node.f("__parent_").as(node.type), node.f("__parent_").as(node.type).f("__left_")]).thenAll((parent, parentLeft) => {
+        if (node.equals(parentLeft))
+            return parent;
+        return walkUpParent(parent);
+    });
+}
+
+function nextRbTreeNode(node) {
+    return Promise.all([node.f("__right_").as(node.type), node.f("__parent_").as(node.type)]).thenAll((right, parent) => {
+        if (!right.isNull())
+            return walkDownLeft(node);
+        return walkUpParent(node);
+    });
+}
+
 function inOrderTraversal(rootNodeOrPromise, leftField, rightField, valueField, lastNodeOrPromise, resultArray) {
     return Promise.all([Promise.resolve(rootNodeOrPromise), Promise.resolve(lastNodeOrPromise)])
     .thenAll((rootNode, lastNode) => {
@@ -91,6 +179,26 @@ function inOrderTraversal(rootNodeOrPromise, leftField, rightField, valueField, 
 }
 
 DbgObject.AddArrayField(
+    (type) => type.name().match(/^std::__Cr::unordered_map<(.*)>$/) != null,
+    "Pairs",
+    (type) => {
+        var allocator = type.templateParameters()[4];
+        var pair = new DbgObjectType(allocator, type).templateParameters()[0];
+        return new DbgObjectType(pair, type);
+    },
+    (map) => {
+        return map.f("__table_").then((table) => {
+            var fromType = map.type.templateParameters()[0];
+            var toType = map.type.templateParameters()[1];
+            var nodeTypeName = `std::__Cr::__hash_node<std::__Cr::__hash_value_type<${fromType}, ${toType}>, void*>`;
+            var nodeType = DbgObjectType(nodeTypeName, table.type);
+            return map.f("__table_.__p1_.__value_.__next_").list("__next_").map(
+                (elem) => elem.as(nodeType).f("__value_.__cc"));
+        });
+    }
+);
+
+DbgObject.AddArrayField(
     (type) => type.name().match(/^std::unordered_map<(.*)>$/) != null,
     "Pairs",
     (type) => DbgObject.create(type, 0).f("_List").then((headNode) => headNode.type.templateParameters()[0]),
@@ -99,7 +207,7 @@ DbgObject.AddArrayField(
 
 DbgObject.AddArrayField(
     (type) => {
-        return type.name().match(/^std::map<(.*)>$/) != null;
+        return type.name().match(/^std::(__Cr::)?map<(.*)>$/) != null;
     },
     "Keys",
     (type) => {
@@ -112,7 +220,7 @@ DbgObject.AddArrayField(
 
 DbgObject.AddArrayField(
     (type) => {
-        return type.name().match(/^std::map<(.*)>$/) != null;
+        return type.name().match(/^std::(__Cr::)?map<(.*)>$/) != null;
     },
     "Values",
     (type) => {
@@ -125,7 +233,7 @@ DbgObject.AddArrayField(
 
 DbgObject.AddTypeDescription(
     (type) => {
-        return type.name().match(/^std::map<(.*)>$/) != null;
+        return type.name().match(/^std::(__Cr::)?map<(.*)>$/) != null;
     },
     "Size",
     false,
@@ -152,7 +260,27 @@ DbgObject.AddTypeDescription(
 );
 
 DbgObject.AddTypeDescription(
-    (type) => type.name().match(/^std::pair<.*>$/) != null,
+    (type) => type.name().match(/^std::__(Cr|1)::basic_string<.*>$/) != null,
+    "Text",
+    true,
+    (str) => {
+        var ss = str.f("__r_.__value_.__s");
+        var shortMask = DbgObject.constantValue(str.type, "__short_mask");
+        var size = ss.f("__size_").uval();
+        return Promise.all([ss, shortMask, size]).thenAll((ss, shortMask, size) => {
+            if ((size & shortMask) == 0) {
+                var len = (shortMask == 1) ? size >> 1 : size;
+                return ss.f("__data_").string(len);
+            } else {
+                var sl = str.f("__r_.__value_.__l");
+                return sl.f("__data_").string(sl.f("__size_"));
+            }
+        });
+    }
+);
+
+DbgObject.AddTypeDescription(
+    (type) => type.name().match(/^std::(__(Cr|1)::)?pair<.*>$/) != null,
     "Pair",
     true,
     (pair) => Promise.all([pair.f("first").desc(), pair.f("second").desc()]).thenAll((first, second) => `{${first}, ${second}}`)

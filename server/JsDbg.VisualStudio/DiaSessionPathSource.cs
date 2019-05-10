@@ -1,4 +1,12 @@
-﻿using System;
+﻿//--------------------------------------------------------------
+//
+//    MIT License
+//
+//    Copyright (c) Microsoft Corporation. All rights reserved.
+//
+//--------------------------------------------------------------
+
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -6,7 +14,7 @@ using System.Threading.Tasks;
 using Dia2Lib;
 using JsDbg.VisualStudio;
 
-namespace JsDbg.Dia.VisualStudio {
+namespace JsDbg.Windows.Dia.VisualStudio {
     class DiaSessionPathSource : IDiaSessionSource {
         internal DiaSessionPathSource(DebuggerRunner runner) {
             this.runner = runner;

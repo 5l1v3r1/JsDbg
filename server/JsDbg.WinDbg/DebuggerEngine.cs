@@ -1,14 +1,23 @@
-﻿using System;
+﻿//--------------------------------------------------------------
+//
+//    MIT License
+//
+//    Copyright (c) Microsoft Corporation. All rights reserved.
+//
+//--------------------------------------------------------------
+
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Debuggers.DbgEng;
 using JsDbg.Core;
+using JsDbg.Windows.Dia;
 
 namespace JsDbg.WinDbg {
-    class DebuggerEngine : ITypeCacheDebuggerEngine {
-        public DebuggerEngine(DebuggerRunner runner, DebugClient client, DebugControl control, Dia.DiaSessionLoader diaLoader) {
+    class DebuggerEngine : IDiaDebuggerEngine {
+        public DebuggerEngine(DebuggerRunner runner, DebugClient client, DebugControl control, DiaSessionLoader diaLoader) {
             this.runner = runner;
             this.client = client;
             this.client.OutputMask = OutputModes.Normal;
@@ -26,7 +35,7 @@ namespace JsDbg.WinDbg {
 
         #region ITypeCacheDebuggerEngine Members
 
-        public Dia.DiaSessionLoader DiaLoader {
+        public DiaSessionLoader DiaLoader {
             get { return this.diaLoader; }
         }
 
@@ -50,29 +59,40 @@ namespace JsDbg.WinDbg {
             }, String.Format("Unable to get TEB address."));
         }
 
-        private async Task<T> AttemptOperation<T>(Func<T> operation, string errorMessage) {
-            bool retryAfterWaitingForBreak = false;
-            do {
-                try {
-                    return operation();
-                } catch (InvalidOperationException) {
-                    if (!retryAfterWaitingForBreak) {
-                        retryAfterWaitingForBreak = true;
-                    } else {
-                        throw new DebuggerException(errorMessage);
-                    }
-                } catch (DebuggerException) {
-                    throw;
-                } catch {
-                    throw new DebuggerException(errorMessage);
-                }
+        public async Task<ulong> TebAddress() {
+            return await this.runner.TebAddress();
+        }
 
-                await this.runner.WaitForBreakIn();
-            } while (true);
+        public uint TargetProcess {
+            get { return this.runner.TargetProcessSystemId; }
+            set { this.runner.SetTargetProcess(value); }
+        }
+
+        public async Task<uint[]> GetAttachedProcesses() {
+            return await this.runner.GetAttachedProcesses();
+        }
+
+        public uint TargetThread {
+            get { return this.runner.TargetThreadSystemId; }
+            set { this.runner.SetTargetThread(value); }
+        }
+
+        public async Task<uint[]> GetCurrentProcessThreads() {
+            return await this.runner.GetCurrentProcessThreads();
+        }
+
+        public Task Continue()
+        {
+            return this.runner.AttemptOperation<Task>(() => {
+                System.Diagnostics.Debug.WriteLine("Executing command: g");
+                this.control.Execute(OutputControl.Ignore, "g", ExecuteOptions.NotLogged);
+                System.Diagnostics.Debug.WriteLine("Done executing g.");
+                return Task.CompletedTask;
+            }, "Unable to continue debugger.");
         }
 
         public Task<Core.SModule> GetModuleForAddress(ulong address) {
-            return this.AttemptOperation<Core.SModule>(() => {
+            return this.runner.AttemptOperation<Core.SModule>(() => {
                 Core.SModule result = new Core.SModule();
                 this.symbolCache.GetModule(address, out result.BaseAddress, out result.Name);
                 return result;
@@ -80,7 +100,7 @@ namespace JsDbg.WinDbg {
         }
 
         public Task<Core.SModule> GetModuleForName(string module) {
-            return this.AttemptOperation<Core.SModule>(() => {
+            return this.runner.AttemptOperation<Core.SModule>(() => {
                 Core.SModule result = new Core.SModule();
                 result.Name = module;
                 result.BaseAddress = this.symbolCache.GetModuleBase(module);
@@ -89,7 +109,7 @@ namespace JsDbg.WinDbg {
         }
 
         public Task<T[]> ReadArray<T>(ulong pointer, ulong size) where T : struct {
-            return this.AttemptOperation<T[]>(() => {
+            return this.runner.AttemptOperation<T[]>(() => {
                 T[] result = new T[size];
                 uint bytesRead = this.dataSpaces.ReadVirtual<T>(pointer, result);
                 if ((uint)System.Runtime.InteropServices.Marshal.SizeOf(typeof(T)) * size > bytesRead) {
@@ -100,7 +120,7 @@ namespace JsDbg.WinDbg {
         }
 
         public Task WriteValue<T>(ulong pointer, T value) where T : struct {
-            return this.AttemptOperation<bool>(() => {
+            return this.runner.AttemptOperation<bool>(() => {
                 T[] data = { value };
                 uint bytesWritten = this.dataSpaces.WriteVirtual<T>(pointer, data);
                 if (bytesWritten < System.Runtime.InteropServices.Marshal.SizeOf(typeof(T))) {
@@ -111,7 +131,7 @@ namespace JsDbg.WinDbg {
         }
 
         public Task<IEnumerable<Core.SStackFrame>> GetCurrentCallStack(int requestedFrameCount) {
-            return this.AttemptOperation<IEnumerable<Core.SStackFrame>>(() => {
+            return this.runner.AttemptOperation<IEnumerable<Core.SStackFrame>>(() => {
                 List<Core.SStackFrame> stackFrames = new List<Core.SStackFrame>();
 
                 uint frameCount = 0;
@@ -139,8 +159,8 @@ namespace JsDbg.WinDbg {
             Console.Out.Write('.');
         }
 
-        public Task<Core.Type> GetTypeFromDebugger(string module, string typename) {
-            return this.AttemptOperation<Core.Type>(() => {
+        public Task<JsDbg.Windows.Dia.Type> GetTypeFromDebugger(string module, string typename) {
+            return this.runner.AttemptOperation<JsDbg.Windows.Dia.Type>(() => {
                 uint typeSize = 0;
 
                 ulong moduleBase;
@@ -226,7 +246,7 @@ namespace JsDbg.WinDbg {
                             //  - Base types of the base types aren't known.
                             // The only thing this base type is sufficient for is knowing which fields are associated with each type,
                             // which fortunately is all we need it for (right now anyway).
-                            SBaseType baseType = new SBaseType(new Core.Type(module, currentBaseClass.TypeName, currentBaseClass.TypeSize, /*isEnum*/false, fields, null, null), (int)currentBaseClass.Offset);
+                            SBaseType baseType = new SBaseType(new JsDbg.Windows.Dia.Type(module, currentBaseClass.TypeName, currentBaseClass.TypeSize, /*isEnum*/false, fields, null, null), (int)currentBaseClass.Offset);
                             baseTypes.Add(baseType);
                             fields = new Dictionary<string, SField>();
                             ++currentBaseClassIndex;
@@ -277,7 +297,7 @@ namespace JsDbg.WinDbg {
                 // Finish up the base types.
                 while (currentBaseClassIndex < parser.ParsedBaseClasses.Count) {
                     var currentBaseClass = parser.ParsedBaseClasses[currentBaseClassIndex];
-                    SBaseType baseType = new SBaseType(new Core.Type(module, currentBaseClass.TypeName, currentBaseClass.TypeSize, /*isEnum*/false, fields, null, null), (int)currentBaseClass.Offset);
+                    SBaseType baseType = new SBaseType(new JsDbg.Windows.Dia.Type(module, currentBaseClass.TypeName, currentBaseClass.TypeSize, /*isEnum*/false, fields, null, null), (int)currentBaseClass.Offset);
                     baseTypes.Add(baseType);
                     fields = new Dictionary<string, SField>();
                     ++currentBaseClassIndex;
@@ -288,12 +308,12 @@ namespace JsDbg.WinDbg {
                     constants.Add(constant.ConstantName, constant.Value);
                 }
 
-                return new Core.Type(module, typename, typeSize, parser.IsEnum, fields, constants, baseTypes);
+                return new JsDbg.Windows.Dia.Type(module, typename, typeSize, parser.IsEnum, fields, constants, baseTypes);
             }, String.Format("Unable to lookup type from debugger: {0}!{1}", module, typename));
         }
 
-        public Task<SSymbolResult> LookupGlobalSymbol(string module, string symbol) {
-            return this.AttemptOperation<SSymbolResult>(() => {
+        public Task<SSymbolResult> LookupGlobalSymbol(string module, string symbol, string typeName) {
+            return this.runner.AttemptOperation<SSymbolResult>(() => {
                 SSymbolResult result = new SSymbolResult();
 
                 uint typeId = 0;
@@ -308,7 +328,11 @@ namespace JsDbg.WinDbg {
 
                 // Now that we have type ids and an offset, we can resolve the names.
                 try {
-                    result.Type = this.symbolCache.GetTypeName(moduleBase, typeId);
+                    string resultTypeName = this.symbolCache.GetTypeName(moduleBase, typeId);
+                    if ((typeName != null) && !resultTypeName.Equals(typeName)) {
+                        throw new DebuggerException(String.Format("Unable to lookup global symbol {0}!{1} with type name {2} from debugger", module, symbol, typeName));
+                    }
+                    result.Type = resultTypeName;
                     result.Module = this.symbols.GetModuleNameStringByBaseAddress(ModuleName.Module, moduleBase);
                     return result;
                 } catch {
@@ -318,7 +342,7 @@ namespace JsDbg.WinDbg {
         }
 
         public Task<SSymbolNameAndDisplacement> LookupSymbolName(ulong pointer) {
-            return this.AttemptOperation<SSymbolNameAndDisplacement>(() => {
+            return this.runner.AttemptOperation<SSymbolNameAndDisplacement>(() => {
                 string fullyQualifiedSymbolName;
                 ulong displacement;
                 this.symbolCache.GetSymbolName(pointer, out fullyQualifiedSymbolName, out displacement);
@@ -338,7 +362,7 @@ namespace JsDbg.WinDbg {
         private Microsoft.Debuggers.DbgEng.DebugDataSpaces dataSpaces;
         private Microsoft.Debuggers.DbgEng.DebugSymbols symbols;
         private SymbolCache symbolCache;
-        private Dia.DiaSessionLoader diaLoader;
+        private DiaSessionLoader diaLoader;
         private bool isPointer64Bit;
     }
 }

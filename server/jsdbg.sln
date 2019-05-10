@@ -5,7 +5,7 @@ VisualStudioVersion = 15.0.26228.12
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "JsDbg.WinDbg", "JsDbg.WinDbg\JsDbg.WinDbg.csproj", "{3E56FB7B-10F0-43F8-8043-EF21206A8E77}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "JsDbg.Core", "JsDbg.Core\JsDbg.Core.csproj", "{585CEC7E-C788-4E43-BC35-FAB4655C96F2}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "JsDbg.Core", "JsDbg.Core\JsDbg.Core.csproj", "{585CEC7E-C788-4E43-BC35-FAB4655C96F2}"
 	ProjectSection(ProjectDependencies) = postProject
 		{344B5B6D-BCED-4222-8573-8C0AC8418422} = {344B5B6D-BCED-4222-8573-8C0AC8418422}
 		{AB2B6BF2-F7F4-4B90-BDC2-58CF71159AC9} = {AB2B6BF2-F7F4-4B90-BDC2-58CF71159AC9}
@@ -31,7 +31,9 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "DiaSource", "DiaSource\DiaS
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "unelevate", "Unelevate\Unelevate.vcxproj", "{344B5B6D-BCED-4222-8573-8C0AC8418422}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "JsDbg.Remoting", "JsDbg.Remoting\JsDbg.Remoting.csproj", "{566A43BB-8D08-4AF8-BC5A-95D08B38DADF}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "JsDbg.Windows.Remoting", "JsDbg.Windows.Remoting\JsDbg.Windows.Remoting.csproj", "{566A43BB-8D08-4AF8-BC5A-95D08B38DADF}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "JsDbg.Windows", "JsDbg.Windows\JsDbg.Windows.csproj", "{CD5A9D9D-4A11-4786-BD6A-AC49919AB165}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -46,12 +48,12 @@ Global
 		{3E56FB7B-10F0-43F8-8043-EF21206A8E77}.Deploy|Any CPU.Build.0 = Deploy|x86
 		{3E56FB7B-10F0-43F8-8043-EF21206A8E77}.Release|Any CPU.ActiveCfg = Release|x86
 		{3E56FB7B-10F0-43F8-8043-EF21206A8E77}.Release|Any CPU.Build.0 = Release|x86
-		{585CEC7E-C788-4E43-BC35-FAB4655C96F2}.Debug|Any CPU.ActiveCfg = Debug|x86
-		{585CEC7E-C788-4E43-BC35-FAB4655C96F2}.Debug|Any CPU.Build.0 = Debug|x86
-		{585CEC7E-C788-4E43-BC35-FAB4655C96F2}.Deploy|Any CPU.ActiveCfg = Release|x86
-		{585CEC7E-C788-4E43-BC35-FAB4655C96F2}.Deploy|Any CPU.Build.0 = Release|x86
-		{585CEC7E-C788-4E43-BC35-FAB4655C96F2}.Release|Any CPU.ActiveCfg = Release|x86
-		{585CEC7E-C788-4E43-BC35-FAB4655C96F2}.Release|Any CPU.Build.0 = Release|x86
+		{585CEC7E-C788-4E43-BC35-FAB4655C96F2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{585CEC7E-C788-4E43-BC35-FAB4655C96F2}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{585CEC7E-C788-4E43-BC35-FAB4655C96F2}.Deploy|Any CPU.ActiveCfg = Debug|Any CPU
+		{585CEC7E-C788-4E43-BC35-FAB4655C96F2}.Deploy|Any CPU.Build.0 = Debug|Any CPU
+		{585CEC7E-C788-4E43-BC35-FAB4655C96F2}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{585CEC7E-C788-4E43-BC35-FAB4655C96F2}.Release|Any CPU.Build.0 = Release|Any CPU
 		{0A217F33-7F48-4093-985A-E1B316611169}.Debug|Any CPU.ActiveCfg = Debug|x86
 		{0A217F33-7F48-4093-985A-E1B316611169}.Debug|Any CPU.Build.0 = Debug|x86
 		{0A217F33-7F48-4093-985A-E1B316611169}.Deploy|Any CPU.ActiveCfg = Deploy|x86
@@ -98,6 +100,12 @@ Global
 		{566A43BB-8D08-4AF8-BC5A-95D08B38DADF}.Deploy|Any CPU.Build.0 = Release|x86
 		{566A43BB-8D08-4AF8-BC5A-95D08B38DADF}.Release|Any CPU.ActiveCfg = Release|x86
 		{566A43BB-8D08-4AF8-BC5A-95D08B38DADF}.Release|Any CPU.Build.0 = Release|x86
+		{CD5A9D9D-4A11-4786-BD6A-AC49919AB165}.Debug|Any CPU.ActiveCfg = Debug|x86
+		{CD5A9D9D-4A11-4786-BD6A-AC49919AB165}.Debug|Any CPU.Build.0 = Debug|x86
+		{CD5A9D9D-4A11-4786-BD6A-AC49919AB165}.Deploy|Any CPU.ActiveCfg = Release|x86
+		{CD5A9D9D-4A11-4786-BD6A-AC49919AB165}.Deploy|Any CPU.Build.0 = Release|x86
+		{CD5A9D9D-4A11-4786-BD6A-AC49919AB165}.Release|Any CPU.ActiveCfg = Release|x86
+		{CD5A9D9D-4A11-4786-BD6A-AC49919AB165}.Release|Any CPU.Build.0 = Release|x86
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

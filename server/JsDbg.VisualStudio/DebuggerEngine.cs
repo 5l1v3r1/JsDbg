@@ -1,12 +1,21 @@
-﻿using System;
+﻿//--------------------------------------------------------------
+//
+//    MIT License
+//
+//    Copyright (c) Microsoft Corporation. All rights reserved.
+//
+//--------------------------------------------------------------
+
+using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Microsoft.VisualStudio.Debugger.Interop;
 using JsDbg.Core;
 using JsDbg.Utilities;
+using JsDbg.Windows.Dia;
 
 namespace JsDbg.VisualStudio {
-    class DebuggerEngine : ITypeCacheDebuggerEngine {
+    class DebuggerEngine : IDiaDebuggerEngine {
         private const int S_OK = 0;
 
         internal DebuggerEngine(DebuggerRunner runner) {
@@ -14,13 +23,13 @@ namespace JsDbg.VisualStudio {
             this.diaLoader = null;
         }
 
-        internal void NotifyDebuggerChange(DebuggerChangeEventArgs.DebuggerStatus status) {
+        internal void NotifyDebuggerStatusChange(DebuggerChangeEventArgs.DebuggerStatus status) {
             this.DebuggerChange?.Invoke(this, new DebuggerChangeEventArgs(status));
         }
 
         #region ITypeCacheDebuggerEngine Members
 
-        public Dia.DiaSessionLoader DiaLoader {
+        public DiaSessionLoader DiaLoader {
             get { return this.diaLoader; }
             set { this.diaLoader = value; }
         }
@@ -31,6 +40,30 @@ namespace JsDbg.VisualStudio {
 
         public bool IsPointer64Bit {
             get { return this.runner.IsPointer64Bit; }
+        }
+
+        public uint TargetProcess {
+            get { return this.runner.TargetProcessSystemId; }
+            set { this.runner.SetTargetProcess(value); }
+        }
+
+        public Task<uint[]> GetAttachedProcesses() {
+            return Task.FromResult<uint[]>(this.runner.GetAttachedProcesses());
+        }
+
+        public uint TargetThread {
+            get { return this.runner.TargetThreadSystemId; }
+            set { this.runner.SetTargetThread(value); }
+        }
+
+        public Task<uint[]> GetCurrentProcessThreads() {
+            return Task.FromResult<uint[]>(this.runner.GetCurrentProcessThreads());
+        }
+
+        public Task Continue()
+        {
+            this.runner.Continue();
+            return Task.CompletedTask;
         }
 
         public async Task<ulong> TebAddress() {
@@ -182,11 +215,11 @@ namespace JsDbg.VisualStudio {
 
         public event DebuggerChangeEventHandler DebuggerChange;
 
-        public Task<Core.Type> GetTypeFromDebugger(string module, string typename) {
+        public Task<JsDbg.Windows.Dia.Type> GetTypeFromDebugger(string module, string typename) {
             throw new DebuggerException("Cannot load types from the Visual Studio debugger directly.");
         }
 
-        public Task<SSymbolResult> LookupGlobalSymbol(string module, string symbol) {
+        public Task<SSymbolResult> LookupGlobalSymbol(string module, string symbol, string typeName) {
             throw new DebuggerException("Cannot load symbols from the Visual Studio debugger directly.");
         }
 
@@ -197,6 +230,6 @@ namespace JsDbg.VisualStudio {
         #endregion
 
         private DebuggerRunner runner;
-        private Dia.DiaSessionLoader diaLoader;
+        private DiaSessionLoader diaLoader;
     }
 }
